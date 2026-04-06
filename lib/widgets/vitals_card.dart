@@ -28,103 +28,111 @@ class VitalsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border(
-          left: BorderSide(
-            color: borderColor,
-            width: 4,
-          ),
-        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withAlpha(10),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(iconData, color: borderColor, size: 24),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(color: borderColor, width: 4),
+            ),
           ),
-          const SizedBox(height: 16),
-          // Value Row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(scale: animation, child: child),
-                  );
-                },
-                child: Text(
-                  value,
-                  key: ValueKey<String>(value),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+              // Header Row: icon + status badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(iconData, color: borderColor, size: 24),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withAlpha(25),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 4),
+              const SizedBox(height: 16),
+              // Value Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(scale: animation, child: child),
+                      );
+                    },
+                    child: Text(
+                      value,
+                      key: ValueKey<String>(value),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  if (unit.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      unit,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 4),
               Text(
-                unit,
+                label,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blueGrey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Sparkline Graph
+              SizedBox(
+                height: 40,
+                width: double.infinity,
+                child: CustomPaint(
+                  painter: _SparklinePainter(
+                    dataPoints: dataPoints,
+                    lineColor: borderColor,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Sparkline Graph
-          SizedBox(
-            height: 40,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                dataPoints: dataPoints,
-                lineColor: borderColor,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -148,7 +156,7 @@ class _SparklinePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     final path = Path();
-    
+
     // Find min and max to scale the graph vertically
     double minVal = dataPoints[0];
     double maxVal = dataPoints[0];
@@ -156,8 +164,8 @@ class _SparklinePainter extends CustomPainter {
       if (v < minVal) minVal = v;
       if (v > maxVal) maxVal = v;
     }
-    
-    // Add small padding to min/max so it doesn't touch the very top/bottom
+
+    // Add small padding so it doesn't touch the very top/bottom
     if (maxVal == minVal) {
       maxVal += 1;
       minVal -= 1;
@@ -167,14 +175,14 @@ class _SparklinePainter extends CustomPainter {
       minVal -= diff * 0.1;
     }
 
-    final double widthStep = size.width / (dataPoints.length > 1 ? dataPoints.length - 1 : 1);
-    
+    final double widthStep =
+        size.width / (dataPoints.length > 1 ? dataPoints.length - 1 : 1);
+
     for (int i = 0; i < dataPoints.length; i++) {
       final double x = i * widthStep;
-      // Invert Y axis because 0 is at the top in canvas
       final double normalizedY = (dataPoints[i] - minVal) / (maxVal - minVal);
       final double y = size.height - (normalizedY * size.height);
-      
+
       if (i == 0) {
         path.moveTo(x, y);
       } else {

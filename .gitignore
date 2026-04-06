@@ -1,3 +1,37 @@
+# Flutter/Dart
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+*.iml
+.metadata
 
-# Secrets
+# Environment & Secrets ⚠️ IMPORTANT
 .env
+*.env
+
+# IDE
+.idea/
+.vscode/
+
+# Logs & Debug files (your project specific)
+*.log
+*.txt
+analyze_full.txt
+analyze_json.txt
+analyze_log.txt
+analyze_out.txt
+analyze_output.txt
+build_error.log
+dart_analyze.txt
+last_error.log
+run_log.txt
+
+# macOS
+.DS_Store
+
+# Test coverage
+coverage/

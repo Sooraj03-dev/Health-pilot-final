@@ -27,7 +27,7 @@ class _SosButtonState extends State<SosButton> with SingleTickerProviderStateMix
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+    _pulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
@@ -47,6 +47,7 @@ class _SosButtonState extends State<SosButton> with SingleTickerProviderStateMix
       _secondsLeft = 3;
     });
 
+    _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsLeft > 1) {
         setState(() {
@@ -90,49 +91,77 @@ class _SosButtonState extends State<SosButton> with SingleTickerProviderStateMix
     return GestureDetector(
       onLongPressStart: (_) => _startCountdown(),
       onLongPressEnd: (_) => _cancelCountdown(),
-      onLongPressUp: () => _cancelCountdown(),
       onLongPressCancel: () => _cancelCountdown(),
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
-          final scale = _isPressed ? 1.0 : _pulseAnimation.value;
+          // Calculate pulse scales. When pressed, shrink everything slightly.
+          final baseScale = _isPressed ? 0.95 : 1.0;
+          final pulseVal = _isPressed ? 0.0 : _pulseAnimation.value;
           
-          return Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                color: Colors.red.shade600,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.4),
-                    blurRadius: 20 * scale,
-                    spreadRadius: 5 * scale,
+          return Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Outer ripple layer
+                  Transform.scale(
+                    scale: baseScale + (0.15 * pulseVal),
+                    child: Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha((255 * 0.15).round()),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                    ),
+                  ),
+                  // Inner ripple layer
+                  Transform.scale(
+                    scale: baseScale + (0.08 * pulseVal),
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withAlpha((255 * 0.3).round()),
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                    ),
+                  ),
+                  // Core SOS Button
+                  Transform.scale(
+                    scale: baseScale,
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withAlpha((255 * 0.4).round()),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _isLoading 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              _isPressed ? '$_secondsLeft' : 'SOS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: _isPressed ? 48 : 42,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              child: Center(
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : _isPressed
-                    ? Text(
-                        '\$_secondsLeft',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : const Text(
-                        'SOS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 42,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
               ),
             ),
           );

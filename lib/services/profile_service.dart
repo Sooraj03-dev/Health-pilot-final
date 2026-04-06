@@ -12,7 +12,7 @@ class ProfileService {
       final data = await supabase
           .from('profiles')
           .select()
-          .eq('id', userId)
+          .eq('user_id', userId)
           .maybeSingle();
 
       if (data == null) return null;
@@ -34,6 +34,6 @@ class ProfileService {
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
     if (updates.isEmpty) return;
 
-    await supabase.from('profiles').update(updates).eq('id', userId);
+    await supabase.from('profiles').update(updates).eq('user_id', userId);
   }
 }

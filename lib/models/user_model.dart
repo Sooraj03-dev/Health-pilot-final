@@ -18,7 +18,7 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] as String,
+      id: (json['user_id'] ?? json['id'] ?? '') as String,
       fullName: json['full_name'] as String?,
       role: (json['role'] as String?) ?? 'patient',
       isVerified: (json['is_verified'] as bool?) ?? false,

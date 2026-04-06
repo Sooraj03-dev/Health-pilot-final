@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
+/// A vitals metric card with an animated value, status badge, and sparkline.
+///
+/// Both [heartRate] and [spo2] can be null (while data is loading or unavailable);
+/// in that case the card shows "--" instead of crashing.
 class VitalsCard extends StatelessWidget {
   final String label;
-  final String value;
+
+  /// The actual numeric value to display.  Pass `null` to show "--".
+  final double? numericValue;
   final String unit;
-  final String statusText;
-  final Color statusColor;
   final Color borderColor;
   final IconData iconData;
   final List<double> dataPoints;
@@ -13,17 +17,42 @@ class VitalsCard extends StatelessWidget {
   const VitalsCard({
     super.key,
     required this.label,
-    required this.value,
+    required this.numericValue,
     required this.unit,
-    required this.statusText,
-    required this.statusColor,
     required this.borderColor,
     required this.iconData,
-    required this.dataPoints,
+    this.dataPoints = const [],
   });
+
+  // ── Status badge logic ──────────────────────────────────────────────────────
+
+  /// Derives status text + colour from the value and the metric type.
+  _StatusInfo get _status {
+    final v = numericValue;
+    if (v == null) return _StatusInfo('Waiting', Colors.grey);
+
+    // Heart Rate badge (detected by borderColor == red-ish or by label string)
+    if (label.toUpperCase().contains('HEART')) {
+      if (v >= 60 && v <= 100) return _StatusInfo('Normal', const Color(0xFF2E9B7F));
+      if ((v >= 50 && v < 60) || (v > 100 && v <= 110)) {
+        return _StatusInfo('Borderline', Colors.orange);
+      }
+      return _StatusInfo('Critical', Colors.red);
+    }
+
+    // SpO2 badge
+    if (v >= 97) return _StatusInfo('Normal', const Color(0xFF2E9B7F));
+    if (v >= 95) return _StatusInfo('Low', Colors.orange);
+    return _StatusInfo('Critical', Colors.red);
+  }
+
+  String get _displayValue =>
+      numericValue != null ? numericValue!.toInt().toString() : '--';
 
   @override
   Widget build(BuildContext context) {
+    final info = _status;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -48,7 +77,7 @@ class VitalsCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row: icon + status badge
+              // Header: icon + status badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -57,13 +86,13 @@ class VitalsCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withAlpha(25),
+                      color: info.color.withAlpha(25),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      statusText,
+                      info.text,
                       style: TextStyle(
-                        color: statusColor,
+                        color: info.color,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -72,43 +101,23 @@ class VitalsCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // Value Row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(scale: animation, child: child),
-                      );
-                    },
-                    child: Text(
-                      value,
-                      key: ValueKey<String>(value),
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+              // Animated value using TweenAnimationBuilder
+              numericValue != null
+                  ? TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 600),
+                      tween: Tween<double>(
+                        begin: numericValue! * 0.8,
+                        end: numericValue!,
                       ),
-                    ),
-                  ),
-                  if (unit.isNotEmpty) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      unit,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueGrey,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                      curve: Curves.easeOut,
+                      builder: (context, value, _) {
+                        return _ValueRow(
+                          displayValue: value.toInt().toString(),
+                          unit: unit,
+                        );
+                      },
+                    )
+                  : _ValueRow(displayValue: '--', unit: unit),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -119,7 +128,7 @@ class VitalsCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Sparkline Graph
+              // Sparkline
               SizedBox(
                 height: 40,
                 width: double.infinity,
@@ -137,6 +146,59 @@ class VitalsCard extends StatelessWidget {
     );
   }
 }
+
+// ── Small helpers ─────────────────────────────────────────────────────────────
+
+class _StatusInfo {
+  final String text;
+  final Color color;
+  const _StatusInfo(this.text, this.color);
+}
+
+class _ValueRow extends StatelessWidget {
+  final String displayValue;
+  final String unit;
+  const _ValueRow({required this.displayValue, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: animation, child: child),
+          ),
+          child: Text(
+            displayValue,
+            key: ValueKey<String>(displayValue),
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        if (unit.isNotEmpty) ...[
+          const SizedBox(width: 4),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.blueGrey,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── Sparkline ─────────────────────────────────────────────────────────────────
 
 class _SparklinePainter extends CustomPainter {
   final List<double> dataPoints;
@@ -157,7 +219,6 @@ class _SparklinePainter extends CustomPainter {
 
     final path = Path();
 
-    // Find min and max to scale the graph vertically
     double minVal = dataPoints[0];
     double maxVal = dataPoints[0];
     for (final v in dataPoints) {
@@ -165,7 +226,6 @@ class _SparklinePainter extends CustomPainter {
       if (v > maxVal) maxVal = v;
     }
 
-    // Add small padding so it doesn't touch the very top/bottom
     if (maxVal == minVal) {
       maxVal += 1;
       minVal -= 1;
@@ -182,7 +242,6 @@ class _SparklinePainter extends CustomPainter {
       final double x = i * widthStep;
       final double normalizedY = (dataPoints[i] - minVal) / (maxVal - minVal);
       final double y = size.height - (normalizedY * size.height);
-
       if (i == 0) {
         path.moveTo(x, y);
       } else {

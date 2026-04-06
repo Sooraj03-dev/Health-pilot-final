@@ -18,10 +18,11 @@ const _kPermissions = [
 ];
 
 /// How often the background sync runs.
-const _kSyncInterval = Duration(minutes: 5);
+const _kSyncInterval = Duration(seconds: 60);
 
 /// How far back each sync window looks for fresh readings.
-const _kLookbackWindow = Duration(minutes: 5);
+/// Intentionally wide (24 h) so first-run picks up data already in Health Connect.
+const _kLookbackWindow = Duration(hours: 24);
 
 // ---------------------------------------------------------------------------
 // WatchService
@@ -155,11 +156,10 @@ class WatchService {
       return;
     }
 
-    // Guard: permissions must be granted.
-    if (!_hasPermissions) {
-      debugPrint('[WatchService] Permissions not granted — skipping sync.');
-      return;
-    }
+    // NOTE: We intentionally skip the _hasPermissions flag check here.
+    // health.hasPermissions() is unreliable on Android Health Connect and
+    // frequently returns null/false even when permissions ARE granted.
+    // We instead just try to read and catch any permission-related exception.
 
     try {
       final now = DateTime.now();
@@ -202,8 +202,7 @@ class WatchService {
       await supabase.from('health_metrics').insert(metric.toJson());
 
       debugPrint(
-        '[WatchService] Synced → HR: ${heartRate.toStringAsFixed(1)} bpm, '
-        'SpO2: ${spo2.toStringAsFixed(1)} %',
+        '[WatchService] ✓ Syncing vitals: HR=${heartRate.toStringAsFixed(1)}, SpO2=${spo2.toStringAsFixed(1)} %',
       );
     } on Exception catch (e) {
       // Surface error in debug console but don't crash the app.

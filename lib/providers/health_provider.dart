@@ -1,35 +1,20 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:health_pilot/core/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:health_pilot/models/health_metric.dart';
 
-final healthMetricsProvider = FutureProvider.autoDispose<List<HealthMetric>>((ref) async {
-  // Auto-refresh every 30 seconds
-  final timer = Timer(const Duration(seconds: 30), () {
-    ref.invalidateSelf();
-  });
-  
-  ref.onDispose(() {
-    timer.cancel();
-  });
+/// Streams the single latest [HealthMetric] for the current user in real-time.
+///
+/// Uses Supabase's `.stream()` API so the dashboard updates automatically
+/// whenever a new row is inserted into `health_metrics` — no polling needed.
+final healthMetricsProvider = StreamProvider<HealthMetric?>((ref) {
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId == null) return Stream.value(null);
 
-  final user = supabase.auth.currentUser;
-  if (user == null) {
-    throw Exception('User is not logged in');
-  }
-
-  // Fetch the latest 10 rows
-  final response = await supabase
+  return Supabase.instance.client
       .from('health_metrics')
-      .select()
-      .eq('user_id', user.id)
+      .stream(primaryKey: ['id'])
+      .eq('user_id', userId)
       .order('recorded_at', ascending: false)
-      .limit(10);
-
-  final metrics = (response as List<dynamic>)
-      .map((json) => HealthMetric.fromJson(json as Map<String, dynamic>))
-      .toList();
-
-  // Reverse list so oldest is first, newest is last (better for plotting graphs left-to-right)
-  return metrics.reversed.toList();
+      .limit(1)
+      .map((data) => data.isEmpty ? null : HealthMetric.fromJson(data.first));
 });

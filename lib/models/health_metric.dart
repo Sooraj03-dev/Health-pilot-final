@@ -12,6 +12,8 @@ class HealthMetric {
   final String userId;
   final double heartRate;
   final double spo2;
+  final int? sleepDurationMinutes;
+  final String? sleepQuality;
   final DateTime recordedAt;
   final DateTime? createdAt;
 
@@ -20,9 +22,19 @@ class HealthMetric {
     required this.userId,
     required this.heartRate,
     required this.spo2,
+    this.sleepDurationMinutes,
+    this.sleepQuality,
     required this.recordedAt,
     this.createdAt,
   });
+
+  /// Returns formatted sleep duration, e.g. "7h 45m" or "--" if null.
+  String get formattedSleep {
+    if (sleepDurationMinutes == null) return '--';
+    final hours = sleepDurationMinutes! ~/ 60;
+    final minutes = sleepDurationMinutes! % 60;
+    return '${hours}h ${minutes}m';
+  }
 
   // ---------------------------------------------------------------------------
   // Serialisation
@@ -34,6 +46,8 @@ class HealthMetric {
       userId: json['user_id'] as String,
       heartRate: (json['heart_rate'] as num).toDouble(),
       spo2: (json['spo2'] as num).toDouble(),
+      sleepDurationMinutes: json['sleep_duration_minutes'] as int?,
+      sleepQuality: json['sleep_quality'] as String?,
       recordedAt: DateTime.parse(json['recorded_at'] as String),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -49,8 +63,10 @@ class HealthMetric {
       'user_id': userId,
       'heart_rate': heartRate,
       'spo2': spo2,
+      if (sleepDurationMinutes != null)
+        'sleep_duration_minutes': sleepDurationMinutes,
+      if (sleepQuality != null) 'sleep_quality': sleepQuality,
       'recorded_at': recordedAt.toIso8601String(),
-      // created_at is server-side default; omit on insert
     };
   }
 
@@ -63,6 +79,8 @@ class HealthMetric {
     String? userId,
     double? heartRate,
     double? spo2,
+    int? sleepDurationMinutes,
+    String? sleepQuality,
     DateTime? recordedAt,
     DateTime? createdAt,
   }) {
@@ -71,6 +89,8 @@ class HealthMetric {
       userId: userId ?? this.userId,
       heartRate: heartRate ?? this.heartRate,
       spo2: spo2 ?? this.spo2,
+      sleepDurationMinutes: sleepDurationMinutes ?? this.sleepDurationMinutes,
+      sleepQuality: sleepQuality ?? this.sleepQuality,
       recordedAt: recordedAt ?? this.recordedAt,
       createdAt: createdAt ?? this.createdAt,
     );

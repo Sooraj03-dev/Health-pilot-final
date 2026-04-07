@@ -5,14 +5,16 @@ import 'package:health/health.dart';
 import 'package:health_pilot/core/supabase_client.dart';
 import 'package:health_pilot/models/health_metric.dart';
 
-/// The two Health Connect data types this service reads.
+/// The Health Connect data types this service reads.
 const _kTypes = [
   HealthDataType.HEART_RATE,
   HealthDataType.BLOOD_OXYGEN,
+  HealthDataType.SLEEP_ASLEEP,
 ];
 
 /// Corresponding access levels (READ-only — we never write health data).
 const _kPermissions = [
+  HealthDataAccess.READ,
   HealthDataAccess.READ,
   HealthDataAccess.READ,
 ];
@@ -184,7 +186,20 @@ class WatchService {
       final latestHr = _latestPoint(dataPoints, HealthDataType.HEART_RATE);
       final latestSpO2 = _latestPoint(dataPoints, HealthDataType.BLOOD_OXYGEN);
 
-      if (latestHr == null && latestSpO2 == null) {
+      // Sum all SLEEP_ASLEEP segments for total nightly duration.
+      final sleepPoints = dataPoints
+          .where((p) => p.type == HealthDataType.SLEEP_ASLEEP)
+          .toList();
+      int? sleepMinutes;
+      if (sleepPoints.isNotEmpty) {
+        final totalMs = sleepPoints.fold<int>(0, (sum, p) {
+          return sum +
+              p.dateTo.difference(p.dateFrom).inMilliseconds;
+        });
+        sleepMinutes = (totalMs / 60000).round();
+      }
+
+      if (latestHr == null && latestSpO2 == null && sleepMinutes == null) {
         debugPrint('[WatchService] No usable data points found.');
         return;
       }
@@ -196,13 +211,16 @@ class WatchService {
         userId: user.id,
         heartRate: heartRate,
         spo2: spo2,
+        sleepDurationMinutes: sleepMinutes,
+        sleepQuality: _getSleepQuality(sleepMinutes),
         recordedAt: now.toUtc(),
       );
 
       await supabase.from('health_metrics').insert(metric.toJson());
 
       debugPrint(
-        '[WatchService] ✓ Syncing vitals: HR=${heartRate.toStringAsFixed(1)}, SpO2=${spo2.toStringAsFixed(1)} %',
+        '[WatchService] ✓ Syncing vitals: HR=${heartRate.toStringAsFixed(1)}, '
+        'SpO2=${spo2.toStringAsFixed(1)}%, Sleep=${sleepMinutes != null ? '${sleepMinutes}min' : 'n/a'}',
       );
     } on Exception catch (e) {
       // Surface error in debug console but don't crash the app.
@@ -233,5 +251,15 @@ class WatchService {
     final v = point.value;
     if (v is NumericHealthValue) return v.numericValue.toDouble();
     return 0.0;
+  }
+
+  /// Maps sleep duration in minutes to a quality label.
+  String _getSleepQuality(int? minutes) {
+    if (minutes == null) return 'Normal';
+    if (minutes < 300) return 'Poor';       // < 5 hours
+    if (minutes < 360) return 'Fair';       // 5–6 hours
+    if (minutes < 480) return 'Normal';     // 6–8 hours
+    if (minutes < 540) return 'Good';       // 8–9 hours
+    return 'Excellent';                      // 9+ hours
   }
 }

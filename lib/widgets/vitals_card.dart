@@ -46,8 +46,7 @@ class VitalsCard extends StatelessWidget {
     return _StatusInfo('Critical', Colors.red);
   }
 
-  String get _displayValue =>
-      numericValue != null ? numericValue!.toInt().toString() : '--';
+
 
   @override
   Widget build(BuildContext context) {

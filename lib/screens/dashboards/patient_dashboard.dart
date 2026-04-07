@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/core/supabase_client.dart';
 import 'package:health_pilot/providers/health_provider.dart';
@@ -8,6 +9,7 @@ import 'package:health_pilot/services/watch_service.dart';
 import 'package:health_pilot/services/sos_service.dart';
 import 'package:health_pilot/widgets/sos_button.dart';
 import 'package:health_pilot/widgets/vitals_card.dart';
+import 'package:health_pilot/widgets/sleep_card.dart';
 
 class PatientDashboard extends ConsumerStatefulWidget {
   const PatientDashboard({super.key});
@@ -292,29 +294,35 @@ class _PatientDashboardState extends ConsumerState<PatientDashboard> {
               ),
               const SizedBox(height: 16),
               metricsAsync.when(
-                loading: () => Row(
-                    children: [
-                      Expanded(
-                        child: VitalsCard(
-                          label: 'HEART RATE BPM',
-                          numericValue: null,
-                          unit: '',
-                          borderColor: Colors.red.shade400,
-                          iconData: Icons.favorite,
+                loading: () => Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: VitalsCard(
+                            label: 'HEART RATE BPM',
+                            numericValue: null,
+                            unit: '',
+                            borderColor: Colors.red.shade400,
+                            iconData: Icons.favorite,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: VitalsCard(
-                          label: 'SPO2 LEVEL',
-                          numericValue: null,
-                          unit: '%',
-                          borderColor: Colors.blue.shade600,
-                          iconData: Icons.water_drop,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: VitalsCard(
+                            label: 'SPO2 LEVEL',
+                            numericValue: null,
+                            unit: '%',
+                            borderColor: Colors.blue.shade600,
+                            iconData: Icons.water_drop,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const SleepCard(sleepLabel: '--'),
+                  ],
+                ),
                 error: (err, _) => Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -335,26 +343,35 @@ class _PatientDashboardState extends ConsumerState<PatientDashboard> {
                   ),
                 ),
                 data: (metric) {
-                  return Row(
+                  return Column(
                     children: [
-                      Expanded(
-                        child: VitalsCard(
-                          label: 'HEART RATE BPM',
-                          numericValue: metric?.heartRate,
-                          unit: '',
-                          borderColor: Colors.red.shade400,
-                          iconData: Icons.favorite,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: VitalsCard(
+                              label: 'HEART RATE BPM',
+                              numericValue: metric?.heartRate,
+                              unit: '',
+                              borderColor: Colors.red.shade400,
+                              iconData: Icons.favorite,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: VitalsCard(
+                              label: 'SPO2 LEVEL',
+                              numericValue: metric?.spo2,
+                              unit: '%',
+                              borderColor: Colors.blue.shade600,
+                              iconData: Icons.water_drop,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: VitalsCard(
-                          label: 'SPO2 LEVEL',
-                          numericValue: metric?.spo2,
-                          unit: '%',
-                          borderColor: Colors.blue.shade600,
-                          iconData: Icons.water_drop,
-                        ),
+                      const SizedBox(height: 16),
+                      SleepCard(
+                        sleepLabel: metric?.formattedSleep ?? '--',
+                        quality: metric?.sleepQuality,
                       ),
                     ],
                   );
@@ -372,44 +389,47 @@ class _PatientDashboardState extends ConsumerState<PatientDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _quickActionCard(Icons.chat_outlined, 'Chat'),
+          _quickActionCard(Icons.chat_outlined, 'Chat', null),
           const SizedBox(width: 12),
-          _quickActionCard(Icons.description_outlined, 'Records'),
+          _quickActionCard(Icons.description_outlined, 'Records', null),
           const SizedBox(width: 12),
-          _quickActionCard(Icons.smart_toy_outlined, 'AI Pilot'),
+          _quickActionCard(Icons.smart_toy_outlined, 'AI Pilot', '/ai-pilot'),
         ],
       ),
     );
   }
 
-  Widget _quickActionCard(IconData icon, String label) {
+  Widget _quickActionCard(IconData icon, String label, String? route) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppColors.primaryDark, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+      child: GestureDetector(
+        onTap: route != null ? () => context.push(route) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.primaryDark, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

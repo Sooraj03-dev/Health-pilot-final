@@ -9,6 +9,7 @@ import 'package:health_pilot/screens/auth/pending_verification.dart';
 import 'package:health_pilot/screens/dashboards/patient_dashboard.dart';
 import 'package:health_pilot/screens/dashboards/doctor_dashboard.dart';
 import 'package:health_pilot/screens/vitals/sos_screen.dart';
+import 'package:health_pilot/screens/ai/ai_assistant_screen.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
 
 /// Application router.
@@ -71,11 +72,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/patient-dashboard',
         builder: (context, state) => AppShell(
-          pages: [
-            const PatientDashboard(),
-            const Center(child: Text('Vitals')),
-            const Center(child: Text('Reports')),
-            const Center(child: Text('Profile')),
+          pages: const [
+            PatientDashboard(),
+            Center(child: Text('Vitals')),
+            Center(child: Text('Reports')),
+            Center(child: Text('Profile')),
           ],
         ),
       ),
@@ -86,6 +87,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sos',
         builder: (context, state) => const SosScreen(),
+      ),
+      GoRoute(
+        path: '/ai-pilot',
+        builder: (context, state) => const AIAssistantScreen(),
       ),
     ],
   );

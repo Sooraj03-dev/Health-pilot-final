@@ -39,22 +39,40 @@ final assignedPatientsProvider = FutureProvider<List<_PatientInfo>>((ref) async 
   final doctorId = supabase.auth.currentUser?.id;
   if (doctorId == null) return [];
   try {
+    debugPrint('[DoctorDashboard] Fetching assigned patients for doctorId: $doctorId');
+    // 1. Fetch assigned patient IDs
     final rows = await supabase
         .from('assigned_patients')
-        .select('patient_id, profiles!patient_id(full_name, role)')
+        .select('patient_id')
         .eq('doctor_id', doctorId);
 
-    return (rows as List<dynamic>).map((r) {
-      final profile = r['profiles'] as Map<String, dynamic>?;
+    debugPrint('[DoctorDashboard] Fetch assigned_patients result: $rows');
+
+    if (rows.isEmpty) return [];
+
+    final patientIds = (rows as List<dynamic>).map((r) => r['patient_id'] as String).toList();
+
+    // 2. Fetch profiles for these patient IDs
+    final profilesReq = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role')
+        .inFilter('user_id', patientIds);
+
+    final profiles = {
+      for (var p in profilesReq) p['user_id'] as String: p
+    };
+
+    return patientIds.map((pid) {
+      final profile = profiles[pid];
       return _PatientInfo(
-        userId: r['patient_id'] as String,
-        name: (profile?['full_name'] as String?) ?? 'Unknown',
-        specialty: (profile?['role'] as String?) ?? 'General',
+        userId: pid,
+        name: (profile?['full_name'] as String?) ?? 'Unknown Patient',
+        specialty: (profile?['role'] as String?) ?? 'Patient',
       );
     }).toList();
-  } catch (e) {
-    debugPrint('[DoctorDashboard] assignedPatientsProvider error: $e');
-    return [];
+  } catch (e, st) {
+    debugPrint('[DoctorDashboard] assignedPatientsProvider error: $e\n$st');
+    throw Exception('Failed to load patients: $e'); // Make it show up on screen
   }
 });
 

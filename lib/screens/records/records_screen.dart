@@ -13,29 +13,28 @@ class CategoryFile {
   CategoryFile({required this.file, required this.category});
 }
 
-final recordsProvider = FutureProvider.autoDispose<List<CategoryFile>>((ref) async {
+final recordsProvider = FutureProvider.autoDispose<Map<String, List<CategoryFile>>>((ref) async {
   final userId = supabase.auth.currentUser?.id;
-  if (userId == null) return [];
+  if (userId == null) return {};
   
   final bucket = supabase.storage.from('medical-docs');
-  final List<CategoryFile> allFiles = [];
+  final Map<String, List<CategoryFile>> groupedFiles = {};
   
   final categories = ['Lab Records', 'Prescriptions', 'General'];
   for (final category in categories) {
     try {
       final items = await bucket.list(path: '$userId/$category');
-      for (final item in items) {
-        // Skip empty folder placeholders sometimes created by UI uploads
-        if (item.name == '.emptyFolderPlaceholder') continue;
-        allFiles.add(CategoryFile(file: item, category: category));
+      final validItems = items.where((f) => f.name != '.emptyFolderPlaceholder').toList();
+      if (validItems.isNotEmpty) {
+        groupedFiles[category] = validItems.map((item) => CategoryFile(file: item, category: category)).toList();
+        groupedFiles[category]!.sort((a, b) => (b.file.updatedAt ?? '').compareTo(a.file.updatedAt ?? ''));
       }
     } catch (_) {
       // Folder might not exist yet, we just ignore
     }
   }
   
-  allFiles.sort((a, b) => (b.file.updatedAt ?? '').compareTo(a.file.updatedAt ?? ''));
-  return allFiles;
+  return groupedFiles;
 });
 
 class RecordsScreen extends ConsumerStatefulWidget {
@@ -182,58 +181,60 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> {
               child: recordsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryDark)),
                 error: (e, _) => Center(child: Text('Error loading records', style: const TextStyle(color: Colors.red))),
-                data: (files) {
-                  if (files.isEmpty) {
+                data: (groupedFiles) {
+                  if (groupedFiles.isEmpty) {
                     return const Center(
                       child: Text('No records uploaded yet.', style: TextStyle(color: AppColors.textSecondary)),
                     );
                   }
+                  
+                  final categories = groupedFiles.keys.toList()..sort();
+                  
                   return ListView.builder(
-                    itemCount: files.length,
+                    itemCount: categories.length,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     physics: const BouncingScrollPhysics(),
                     itemBuilder: (context, index) {
-                      final item = files[index];
-                      // Format date nicely
-                      final dateStr = item.file.updatedAt != null 
-                        ? item.file.updatedAt!.split('T')[0] 
-                        : '';
-                        
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.primaryDark.withAlpha(30),
-                            child: const Icon(Icons.description, color: AppColors.primaryDark),
-                          ),
-                          title: Text(item.file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(item.category, style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                              ],
+                      final category = categories[index];
+                      final files = groupedFiles[category]!;
+                      
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                            child: Text(
+                              category,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
                             ),
                           ),
-                          onTap: () {
-                            // Patient could potentially view their own record here, but we will keep it simple.
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('File selected (Opening coming soon)')),
+                          ...files.map((item) {
+                            final dateStr = item.file.updatedAt != null 
+                              ? item.file.updatedAt!.split('T')[0] 
+                              : '';
+                              
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                leading: CircleAvatar(
+                                  backgroundColor: AppColors.primaryDark.withAlpha(20),
+                                  child: const Icon(Icons.description_outlined, color: AppColors.primaryDark),
+                                ),
+                                title: Text(item.file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                subtitle: Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('File selected (Opening coming soon)')),
+                                  );
+                                },
+                              ),
                             );
-                          },
-                        ),
+                          }),
+                          const SizedBox(height: 8),
+                        ],
                       );
                     },
                   );

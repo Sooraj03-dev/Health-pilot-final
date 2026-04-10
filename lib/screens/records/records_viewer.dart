@@ -42,15 +42,18 @@ class RecordsViewerScreen extends ConsumerWidget {
       final path = '$patientId/$category/$fileName';
       final signedUrl = await supabase.storage.from('medical-docs').createSignedUrl(path, 60); // 1 minute expiry
       
-      final url = Uri.parse(signedUrl);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open file'), backgroundColor: Colors.red),
-          );
-        }
+      // Force the browser to trigger a native file download instead of previewing it
+      final String downloadUrl = signedUrl.contains('?') ? '$signedUrl&download=' : '$signedUrl?download=';
+      
+      final url = Uri.parse(downloadUrl);
+      
+      // Directly launch. canLaunchUrl returns false on Android 11+ without explicit Manifest queries
+      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open file'), backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
       if (context.mounted) {

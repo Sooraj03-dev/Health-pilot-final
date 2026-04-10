@@ -66,12 +66,12 @@ class GeminiService {
     }
 
     _model = GenerativeModel(
-      model: 'gemini-flash-latest',
+      model: 'gemini-1.5-flash-latest',
       apiKey: apiKey,
       systemInstruction: Content.system(kSystemInstruction),
       generationConfig: GenerationConfig(
         temperature: 0.7,
-        maxOutputTokens: 200,
+        maxOutputTokens: 500,
       ),
     );
     return _model!;
@@ -157,6 +157,48 @@ class GeminiService {
       debugPrint('[GeminiService] sendMessage error: $e');
       return 'An error occurred while contacting the AI. Please check your '
           'connection and try again.';
+    }
+  }
+
+  // ── Medical Record Summarization ──────────────────────────────────────────
+
+  static const String kRecordSummaryPrompt = '''
+You are a medical scribe assisting a doctor. Summarize the provided medical record/report.
+Focus on:
+1. Patient Info (Name, Date of Birth if visible).
+2. Key Clinical Findings/Observations.
+3. Medications prescribed or mentioned.
+4. Abnormal lab results or red flags (highlight these!).
+5. Recommended follow-up actions.
+
+Format the output clearly with headings. Keep it professional and concise.
+Disclaimer: Include "AI-generated summary - verify with original document" at the end.
+''';
+
+  /// Summarizes a medical record (PDF, Image, or Text).
+  Future<String> summarizeMedicalRecord({
+    required Uint8List fileBytes,
+    required String mimeType,
+  }) async {
+    try {
+      final model = _getModel();
+      final parts = <Part>[
+        DataPart(mimeType, fileBytes),
+        TextPart(kRecordSummaryPrompt),
+      ];
+
+      final response = await model.generateContent([Content('user', parts)]);
+      final text = response.text?.trim();
+      
+      if (text == null || text.isEmpty) {
+        return 'The AI could not generate a summary for this document. Please check the file content and try again.';
+      }
+      return text;
+    } on StateError catch (e) {
+      return '⚠️ ${e.message}';
+    } catch (e) {
+      debugPrint('[GeminiService] summarizeMedicalRecord error: $e');
+      return 'An error occurred while summarizing the record. Ensure the file format is supported (PDF, JPEG, PNG, or TXT).';
     }
   }
 

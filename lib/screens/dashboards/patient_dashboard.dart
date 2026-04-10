@@ -389,7 +389,7 @@ class _PatientDashboardState extends ConsumerState<PatientDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _quickActionCard(Icons.chat_outlined, 'Chat', null),
+          _quickActionCard(Icons.chat_outlined, 'Chat', '/patient-chat'),
           const SizedBox(width: 12),
           _quickActionCard(Icons.description_outlined, 'Records', '/records'),
           const SizedBox(width: 12),

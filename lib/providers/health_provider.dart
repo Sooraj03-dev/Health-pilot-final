@@ -18,3 +18,14 @@ final healthMetricsProvider = StreamProvider<HealthMetric?>((ref) {
       .limit(1)
       .map((data) => data.isEmpty ? null : HealthMetric.fromJson(data.first));
 });
+
+/// Streams the real-time health metrics specifically for a caregiver tracking their assigned patient.
+final caregiverHealthMetricsProvider = StreamProvider.family<HealthMetric?, String>((ref, patientId) {
+  return Supabase.instance.client
+      .from('health_metrics')
+      .stream(primaryKey: ['id'])
+      .eq('user_id', patientId)
+      .order('recorded_at', ascending: false)
+      .limit(1)
+      .map((data) => data.isEmpty ? null : HealthMetric.fromJson(data.first));
+});

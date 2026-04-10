@@ -98,4 +98,51 @@ class ChatService {
     }
     _cache = [];
   }
+
+  /// Exposes a real-time stream of messages specifically between two users.
+  Stream<List<Message>> getConversationStream(String userId1, String userId2) {
+    StreamController<List<Message>>? controller;
+    RealtimeChannel? subscription;
+    List<Message> cache = [];
+
+    controller = StreamController<List<Message>>.broadcast(
+      onListen: () async {
+        try {
+          final response = await supabase
+              .from('messages')
+              .select()
+              .or('and(sender_id.eq.$userId1,receiver_id.eq.$userId2),and(sender_id.eq.$userId2,receiver_id.eq.$userId1)')
+              .order('created_at', ascending: true);
+              
+          cache = (response as List<dynamic>).map((e) => Message.fromJson(e)).toList();
+          if (!controller!.isClosed) controller!.add(cache.toList());
+        } catch (e) {
+          if (!controller!.isClosed) controller!.addError(e);
+        }
+
+        subscription = supabase
+            .channel('public:messages:conv:$userId1:$userId2')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'messages',
+              callback: (payload) {
+                final newMsg = Message.fromJson(payload.newRecord);
+                if ((newMsg.senderId == userId1 && newMsg.receiverId == userId2) ||
+                    (newMsg.senderId == userId2 && newMsg.receiverId == userId1)) {
+                  cache.add(newMsg);
+                  if (!controller!.isClosed) controller!.add(cache.toList());
+                }
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () {
+        subscription?.unsubscribe();
+        controller?.close();
+      },
+    );
+
+    return controller.stream;
+  }
 }

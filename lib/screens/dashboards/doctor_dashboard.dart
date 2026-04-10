@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/core/supabase_client.dart';
+import 'package:go_router/go_router.dart';
 import 'package:health_pilot/services/auth_service.dart';
 
 // ---------------------------------------------------------------------------
@@ -455,20 +456,15 @@ class _PatientCard extends ConsumerWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              IconButton(
-                constraints: const BoxConstraints(),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.history,
-                    color: AppColors.textSecondary, size: 20),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                constraints: const BoxConstraints(),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.note_add_outlined,
-                    color: AppColors.textSecondary, size: 20),
-                onPressed: () {},
+              TextButton.icon(
+                onPressed: () => context.push('/patient-records/${patient.userId}'),
+                icon: const Icon(Icons.folder_shared_outlined, size: 18, color: AppColors.primaryDark),
+                label: const Text('Records', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  backgroundColor: AppColors.primaryDark.withAlpha(15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
               ),
               const Spacer(),
               GestureDetector(

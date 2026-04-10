@@ -10,6 +10,8 @@ import 'package:health_pilot/screens/dashboards/patient_dashboard.dart';
 import 'package:health_pilot/screens/dashboards/doctor_dashboard.dart';
 import 'package:health_pilot/screens/vitals/sos_screen.dart';
 import 'package:health_pilot/screens/ai/ai_assistant_screen.dart';
+import 'package:health_pilot/screens/records/records_screen.dart';
+import 'package:health_pilot/screens/records/records_viewer.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
 
 /// Application router.
@@ -91,6 +93,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/ai-pilot',
         builder: (context, state) => const AIAssistantScreen(),
+      ),
+      GoRoute(
+        path: '/records',
+        builder: (context, state) => const RecordsScreen(),
+      ),
+      GoRoute(
+        path: '/patient-records/:id',
+        builder: (context, state) {
+          final patientId = state.pathParameters['id']!;
+          return RecordsViewerScreen(patientId: patientId);
+        },
       ),
     ],
   );

@@ -391,7 +391,7 @@ class _PatientDashboardState extends ConsumerState<PatientDashboard> {
         children: [
           _quickActionCard(Icons.chat_outlined, 'Chat', null),
           const SizedBox(width: 12),
-          _quickActionCard(Icons.description_outlined, 'Records', null),
+          _quickActionCard(Icons.description_outlined, 'Records', '/records'),
           const SizedBox(width: 12),
           _quickActionCard(Icons.smart_toy_outlined, 'AI Pilot', '/ai-pilot'),
         ],

@@ -98,6 +98,7 @@ class ChatService {
     }
     _cache = [];
   }
+<<<<<<< HEAD
 
   /// Exposes a real-time stream of messages specifically between two users.
   Stream<List<Message>> getConversationStream(String userId1, String userId2) {
@@ -145,4 +146,6 @@ class ChatService {
 
     return controller.stream;
   }
+=======
+>>>>>>> origin/feat/patient-chat3
 }

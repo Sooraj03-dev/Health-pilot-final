@@ -12,6 +12,9 @@ import 'package:health_pilot/screens/vitals/sos_screen.dart';
 import 'package:health_pilot/screens/ai/ai_assistant_screen.dart';
 import 'package:health_pilot/screens/records/records_screen.dart';
 import 'package:health_pilot/screens/records/records_viewer.dart';
+import 'package:health_pilot/screens/profile/setup_profile_screen.dart';
+import 'package:health_pilot/screens/profile/patient_profile_screen.dart';
+import 'package:health_pilot/screens/profile/doctor_profile_screen.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
 
 /// Application router.
@@ -50,7 +53,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             : '/pending-verification';
       }
 
-      // Signed in & verified — if still on an auth page, redirect to dashboard.
+      // Check if essential profile info is missing — this must run BEFORE
+      // the dashboard redirect so new sign-ups land on /setup-profile first.
+      if (!authState.hasMinimalProfile && currentPath != '/setup-profile') {
+        return '/setup-profile';
+      }
+
+      // Signed in & profile complete — if still on an auth page, go to dashboard.
       if (isAuthRoute || currentPath == '/pending-verification') {
         return role == 'doctor' ? '/doctor-dashboard' : '/patient-dashboard';
       }
@@ -78,7 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             PatientDashboard(),
             Center(child: Text('Vitals')),
             Center(child: Text('Reports')),
-            Center(child: Text('Profile')),
+            PatientProfileScreen(),
           ],
         ),
       ),
@@ -104,6 +113,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           final patientId = state.pathParameters['id']!;
           return RecordsViewerScreen(patientId: patientId);
         },
+      ),
+      GoRoute(
+        path: '/setup-profile',
+        builder: (context, state) => const SetupProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile-patient',
+        builder: (context, state) => const PatientProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile-doctor',
+        builder: (context, state) => const DoctorProfileScreen(),
       ),
     ],
   );

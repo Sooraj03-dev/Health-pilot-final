@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/models/message.dart';
-import 'package:health_pilot/providers/chat_provider.dart';
+import 'package:health_pilot/providers/ai_chat_provider.dart';
 import 'package:health_pilot/widgets/loading_shimmer.dart';
 import 'package:health_pilot/widgets/message_bubble.dart';
 

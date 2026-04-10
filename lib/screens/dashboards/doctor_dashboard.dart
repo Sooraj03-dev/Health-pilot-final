@@ -5,6 +5,8 @@ import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/core/supabase_client.dart';
 import 'package:go_router/go_router.dart';
 import 'package:health_pilot/services/auth_service.dart';
+import 'package:health_pilot/screens/chat/doctor_inbox_screen.dart';
+import 'package:health_pilot/screens/chat/chat_room_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Data Models
@@ -102,11 +104,18 @@ final patientVitalsProvider =
 // Doctor Dashboard
 // ---------------------------------------------------------------------------
 
-class DoctorDashboard extends ConsumerWidget {
+class DoctorDashboard extends ConsumerStatefulWidget {
   const DoctorDashboard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DoctorDashboard> createState() => _DoctorDashboardState();
+}
+
+class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final patientsAsync = ref.watch(assignedPatientsProvider);
     final doctorName = (supabase.auth.currentUser
             ?.userMetadata?['full_name'] as String?) ??
@@ -114,29 +123,41 @@ class DoctorDashboard extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context, doctorName, patientsAsync),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
-                child: patientsAsync.when(
-                  loading: () => const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(48),
-                      child: CircularProgressIndicator(),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          // 0: Home view
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context, doctorName, patientsAsync),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
+                    child: patientsAsync.when(
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(48),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (e, _) => _ErrorCard(message: e.toString()),
+                      data: (patients) => _buildBody(context, ref, patients),
                     ),
                   ),
-                  error: (e, _) => _ErrorCard(message: e.toString()),
-                  data: (patients) => _buildBody(context, ref, patients),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          // 1: Vitals (Placeholder)
+          const Center(child: Text('Vitals Screen')),
+          // 2: Chat
+          const DoctorInboxScreen(),
+          // 3: Profile (Placeholder)
+          const Center(child: Text('Profile Screen')),
+        ],
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -299,7 +320,8 @@ class DoctorDashboard extends ConsumerWidget {
 
   Widget _buildBottomNav() {
     return BottomNavigationBar(
-      currentIndex: 0,
+      currentIndex: _currentIndex,
+      onTap: (index) => setState(() => _currentIndex = index),
       selectedItemColor: AppColors.primaryDark,
       unselectedItemColor: AppColors.textSecondary,
       backgroundColor: Colors.white,
@@ -474,33 +496,39 @@ class _PatientCard extends ConsumerWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              TextButton.icon(
-                onPressed: () => context.push('/patient-records/${patient.userId}'),
-                icon: const Icon(Icons.folder_shared_outlined, size: 18, color: AppColors.primaryDark),
-                label: const Text('Records', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600)),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  backgroundColor: AppColors.primaryDark.withAlpha(15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () => context.push('/patient-records/${patient.userId}'),
+                  icon: const Icon(Icons.folder_shared_outlined, size: 16, color: AppColors.primaryDark),
+                  label: const Text('Records', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    backgroundColor: AppColors.primaryDark.withAlpha(15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Row(
-                  children: [
-                    Text(
-                      'Details',
-                      style: TextStyle(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatRoomScreen(
+                          patientId: patient.userId,
+                          patientName: patient.name,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.chevron_right,
-                        color: AppColors.primaryDark, size: 18),
-                  ],
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.primaryDark),
+                  label: const Text('Chat', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    backgroundColor: AppColors.primaryDark.withAlpha(15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
             ],

@@ -63,6 +63,7 @@ class Message {
   final String receiverId;
   final String content;
   final DateTime createdAt;
+  final bool isRead;
 
   const Message({
     required this.id,
@@ -70,6 +71,7 @@ class Message {
     required this.receiverId,
     required this.content,
     required this.createdAt,
+    this.isRead = false,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -78,7 +80,8 @@ class Message {
       senderId: json['sender_id'] as String,
       receiverId: json['receiver_id'] as String,
       content: json['content'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      isRead: json['is_read'] as bool? ?? false,
     );
   }
 
@@ -88,5 +91,6 @@ class Message {
         'receiver_id': receiverId,
         'content': content,
         'created_at': createdAt.toIso8601String(),
+        'is_read': isRead,
       };
 }

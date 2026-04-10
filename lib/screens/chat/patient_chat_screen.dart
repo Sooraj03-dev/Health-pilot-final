@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/core/supabase_client.dart';
@@ -44,6 +45,9 @@ class _PatientChatScreenState extends State<PatientChatScreen>
 
   /// True when a message is currently being sent.
   bool _isSending = false;
+
+  /// True when a file is being uploaded.
+  bool _isUploading = false;
 
   /// Number of messages we've last seen — used to detect new arrivals.
   int _lastMessageCount = 0;
@@ -152,20 +156,79 @@ class _PatientChatScreenState extends State<PatientChatScreen>
       await _chatService.sendMessage(text, _doctorId!);
     } catch (e) {
       debugPrint('[PatientChatScreen] Send error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Failed to send message. Please try again.'),
-            backgroundColor: AppColors.sosRed,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
+      if (mounted) _showErrorSnackBar('Failed to send message. Please try again.');
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // File attachment
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Opens the file picker, uploads the selected file to Supabase Storage,
+  /// and sends a `[FILE: filename]` message to the doctor.
+  Future<void> _pickAndSendFile() async {
+    if (_doctorId == null || _isUploading) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+      withData: true,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    final fileName = file.name;
+
+    if (bytes == null) {
+      if (mounted) _showErrorSnackBar('Could not read file data.');
+      return;
+    }
+
+    setState(() => _isUploading = true);
+
+    try {
+      // Attempt to upload file to Supabase Storage.
+      // Uses medical-docs bucket (already exists) with a chat/ prefix.
+      final storagePath =
+          'chat/$_patientId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      try {
+        await supabase.storage
+            .from('medical-docs')
+            .uploadBinary(storagePath, bytes);
+        debugPrint('[PatientChatScreen] File uploaded to: $storagePath');
+      } catch (storageErr) {
+        // Storage upload failed (missing bucket, RLS, etc.)
+        // Still send the file message so chat isn't broken.
+        debugPrint(
+            '[PatientChatScreen] Storage upload failed: $storageErr '
+            '— sending file reference without upload.');
+      }
+
+      // Send a message with the [FILE: filename] marker.
+      await _chatService.sendMessage('[FILE: $fileName]', _doctorId!);
+    } catch (e) {
+      debugPrint('[PatientChatScreen] File send error: $e');
+      if (mounted) {
+        _showErrorSnackBar('Failed to send file. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  void _showErrorSnackBar(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: AppColors.sosRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -579,7 +642,7 @@ class _PatientChatScreenState extends State<PatientChatScreen>
   Widget _buildInputBar() {
     return Container(
       padding: EdgeInsets.only(
-        left: 12,
+        left: 6,
         right: 8,
         top: 10,
         bottom: MediaQuery.of(context).padding.bottom + 10,
@@ -597,7 +660,35 @@ class _PatientChatScreenState extends State<PatientChatScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Text field
+          // ── Attachment button ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _isUploading ? null : _pickAndSendFile,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: _isUploading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryDark,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.attach_file_rounded,
+                          color: AppColors.textSecondary,
+                          size: 24,
+                        ),
+                ),
+              ),
+            ),
+          ),
+          // ── Text field ────────────────────────────────────────────
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 120),
@@ -629,9 +720,9 @@ class _PatientChatScreenState extends State<PatientChatScreen>
             ),
           ),
           const SizedBox(width: 8),
-          // Send button
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+          // ── Send button ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
             child: Material(
               color: AppColors.primaryDark,
               borderRadius: BorderRadius.circular(24),

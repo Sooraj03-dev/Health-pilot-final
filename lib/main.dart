@@ -5,7 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:health_pilot/core/theme.dart';
 import 'package:health_pilot/router.dart';
+<<<<<<< HEAD
 import 'package:health_pilot/services/notification_service.dart';
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +22,12 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
+<<<<<<< HEAD
   // Initialise local notifications
   await NotificationService().init();
 
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
   runApp(const ProviderScope(child: HealthPilotApp()));
 }
 
@@ -42,4 +48,8 @@ class HealthPilotApp extends ConsumerWidget {
       routerConfig: router,
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42

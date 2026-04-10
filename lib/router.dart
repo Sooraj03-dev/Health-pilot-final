@@ -8,6 +8,7 @@ import 'package:health_pilot/screens/auth/signup_page.dart';
 import 'package:health_pilot/screens/auth/pending_verification.dart';
 import 'package:health_pilot/screens/dashboards/patient_dashboard.dart';
 import 'package:health_pilot/screens/dashboards/doctor_dashboard.dart';
+<<<<<<< HEAD
 import 'package:health_pilot/screens/vitals/sos_screen.dart';
 import 'package:health_pilot/screens/ai/ai_assistant_screen.dart';
 import 'package:health_pilot/screens/chat/patient_chat_screen.dart';
@@ -18,6 +19,8 @@ import 'package:health_pilot/screens/profile/patient_profile_screen.dart';
 import 'package:health_pilot/screens/profile/doctor_profile_screen.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
 import 'package:health_pilot/screens/chat/caregiver_screen.dart';
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
 
 /// Application router.
 ///
@@ -32,9 +35,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: (context, state) {
+<<<<<<< HEAD
       // While auth state is still loading, don't redirect.
       if (authState.isLoading) return null;
 
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
       final isAuthenticated = authState.isAuthenticated;
       final isVerified = authState.isVerified;
       final role = authState.role;
@@ -55,6 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             : '/pending-verification';
       }
 
+<<<<<<< HEAD
       // Check if essential profile info is missing — this must run BEFORE
       // the dashboard redirect so new sign-ups land on /setup-profile first.
       if (!authState.hasMinimalProfile && currentPath != '/setup-profile') {
@@ -66,6 +73,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (role == 'caregiver') {
             return '/caregiver-view/00000000-0000-0000-0000-000000000000/Patient';
         }
+=======
+      // Signed in & verified — if still on an auth page, redirect to dashboard.
+      if (isAuthRoute || currentPath == '/pending-verification') {
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
         return role == 'doctor' ? '/doctor-dashboard' : '/patient-dashboard';
       }
 
@@ -87,6 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/patient-dashboard',
+<<<<<<< HEAD
         builder: (context, state) => AppShell(
           pages: const [
             PatientDashboard(),
@@ -95,11 +107,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             PatientProfileScreen(),
           ],
         ),
+=======
+        builder: (context, state) => const PatientDashboard(),
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
       ),
       GoRoute(
         path: '/doctor-dashboard',
         builder: (context, state) => const DoctorDashboard(),
       ),
+<<<<<<< HEAD
       GoRoute(
         path: '/sos',
         builder: (context, state) => const SosScreen(),
@@ -143,6 +159,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           return RecordsViewerScreen(patientId: patientId);
         },
       ),
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
     ],
   );
 });

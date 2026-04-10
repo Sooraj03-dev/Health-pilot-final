@@ -27,4 +27,10 @@ void main() {
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
   });
+<<<<<<< HEAD
+=======
+  test('placeholder test', () {
+    expect(1 + 1, 2);
+  });
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/services/auth_service.dart';
@@ -8,10 +9,23 @@ class PendingVerificationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+=======
+
+/// Shown when a user has signed up but their profile is not yet verified.
+class PendingVerificationPage extends StatelessWidget {
+  const PendingVerificationPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: Padding(
+<<<<<<< HEAD
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -61,6 +75,34 @@ class PendingVerificationPage extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
+=======
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.mark_email_unread_rounded,
+                  size: 80,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Verification Pending',
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Your account is awaiting verification.\n'
+                  'Please check your email or contact an administrator.',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
                 ),
               ],
             ),

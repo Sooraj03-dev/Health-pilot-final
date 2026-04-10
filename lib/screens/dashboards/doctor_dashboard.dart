@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:health_pilot/core/constants.dart';
@@ -882,6 +883,45 @@ class _StatCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                   letterSpacing: 0.5),
+=======
+
+/// Stub doctor dashboard — replace with full implementation later.
+class DoctorDashboard extends StatelessWidget {
+  const DoctorDashboard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Doctor Dashboard'),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.medical_services_rounded,
+              size: 64,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Welcome, Doctor!',
+              style: textTheme.headlineSmall?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your clinical dashboard is coming soon.',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42
             ),
           ],
         ),
@@ -889,6 +929,7 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+<<<<<<< HEAD
 
 class _VitalChip extends StatelessWidget {
   final String label;
@@ -979,3 +1020,5 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
+=======
+>>>>>>> aabf34341f6f37d9047fdd10608e9360e05a0d42

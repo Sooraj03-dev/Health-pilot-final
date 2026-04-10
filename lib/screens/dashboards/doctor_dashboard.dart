@@ -485,22 +485,15 @@ class _PatientCard extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Row(
-                  children: [
-                    Text(
-                      'Details',
-                      style: TextStyle(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.chevron_right,
-                        color: AppColors.primaryDark, size: 18),
-                  ],
+              TextButton.icon(
+                onPressed: () => context.push(
+                    '/doctor-chat/${patient.userId}/${Uri.encodeComponent(patient.name)}'),
+                icon: const Icon(Icons.chat_outlined, size: 18, color: AppColors.primaryDark),
+                label: const Text('Chat', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  backgroundColor: AppColors.primaryDark.withAlpha(15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             ],

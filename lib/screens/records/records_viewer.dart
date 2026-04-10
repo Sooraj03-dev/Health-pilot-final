@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:health_pilot/core/constants.dart';
 import 'package:health_pilot/core/supabase_client.dart';
+import 'package:health_pilot/providers/record_summary_provider.dart';
+import 'package:health_pilot/widgets/records/medical_record_summary_modal.dart';
 import 'package:go_router/go_router.dart';
 
 class CategoryFile {
@@ -12,23 +14,26 @@ class CategoryFile {
   CategoryFile({required this.file, required this.category});
 }
 
-final patientRecordsProvider = FutureProvider.family.autoDispose<Map<String, List<CategoryFile>>, String>((ref, patientId) async {
+final patientRecordsProvider = FutureProvider.family
+    .autoDispose<Map<String, List<CategoryFile>>, String>((ref, patientId) async {
   final bucket = supabase.storage.from('medical-docs');
   final Map<String, List<CategoryFile>> groupedFiles = {};
-  
+
   final categories = ['Lab Records', 'Prescriptions', 'General'];
   for (final category in categories) {
     try {
       final items = await bucket.list(path: '$patientId/$category');
-      final validItems = items.where((f) => f.name != '.emptyFolderPlaceholder').toList();
+      final validItems =
+          items.where((f) => f.name != '.emptyFolderPlaceholder').toList();
       if (validItems.isNotEmpty) {
-        groupedFiles[category] = validItems.map((item) => CategoryFile(file: item, category: category)).toList();
+        groupedFiles[category] =
+            validItems.map((item) => CategoryFile(file: item, category: category)).toList();
       }
     } catch (_) {
-      // Folder might not exist yet, we just ignore
+      // Folder might not exist yet
     }
   }
-  
+
   return groupedFiles;
 });
 
@@ -37,31 +42,52 @@ class RecordsViewerScreen extends ConsumerWidget {
 
   const RecordsViewerScreen({super.key, required this.patientId});
 
-  Future<void> _openFile(BuildContext context, String category, String fileName) async {
+  Future<void> _openFile(
+      BuildContext context, String category, String fileName) async {
     try {
       final path = '$patientId/$category/$fileName';
-      final signedUrl = await supabase.storage.from('medical-docs').createSignedUrl(path, 60); // 1 minute expiry
-      
-      // Force the browser to trigger a native file download instead of previewing it
-      final String downloadUrl = signedUrl.contains('?') ? '$signedUrl&download=' : '$signedUrl?download=';
-      
+      final signedUrl = await supabase.storage
+          .from('medical-docs')
+          .createSignedUrl(path, 60);
+
+      final String downloadUrl = signedUrl.contains('?')
+          ? '$signedUrl&download='
+          : '$signedUrl?download=';
+
       final url = Uri.parse(downloadUrl);
-      
-      // Directly launch. canLaunchUrl returns false on Android 11+ without explicit Manifest queries
       final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
-      
+
       if (!launched && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open file'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Could not open file'),
+              backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to get document: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Failed to get document: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  void _showSummaryModal(BuildContext context, WidgetRef ref, String category, String fileName) {
+    // Reset previous summary state before opening modal
+    ref.read(recordSummaryProvider.notifier).reset();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MedicalRecordSummaryModal(
+        patientId: patientId,
+        category: category,
+        fileName: fileName,
+      ),
+    );
   }
 
   @override
@@ -72,7 +98,7 @@ class RecordsViewerScreen extends ConsumerWidget {
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('Patient Records'),
-        backgroundColor: AppColors.primaryDark,
+        backgroundColor: const Color(0xFF1A3A6B),
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -81,60 +107,103 @@ class RecordsViewerScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: recordsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryDark)),
-          error: (e, _) => Center(child: Text('Error loading records', style: const TextStyle(color: Colors.red))),
+          loading: () => const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1A3A6B))),
+          error: (e, _) => Center(
+              child: Text('Error loading records',
+                  style: const TextStyle(color: Colors.red))),
           data: (groupedFiles) {
             if (groupedFiles.isEmpty) {
               return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.folder_shared_outlined, size: 64, color: AppColors.textSecondary),
+                    Icon(Icons.folder_shared_outlined,
+                        size: 64, color: AppColors.textSecondary),
                     SizedBox(height: 16),
-                    Text('No records found for this patient.', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                    Text(
+                      'No records found for this patient.',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 16),
+                    ),
                   ],
                 ),
               );
             }
-            
+
             final categories = groupedFiles.keys.toList()..sort();
-            
+
             return ListView.builder(
               itemCount: categories.length,
               padding: const EdgeInsets.all(16),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final files = groupedFiles[category]!;
-                
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 4.0),
                       child: Text(
                         category,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A3A6B)),
                       ),
                     ),
                     ...files.map((item) {
-                      final dateStr = item.file.updatedAt != null 
-                          ? item.file.updatedAt!.split('T')[0] 
+                      final dateStr = item.file.updatedAt != null
+                          ? item.file.updatedAt!.split('T')[0]
                           : '';
-                          
+
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         color: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          contentPadding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
                           leading: CircleAvatar(
-                            backgroundColor: AppColors.primaryDark.withAlpha(20),
-                            child: const Icon(Icons.description_outlined, color: AppColors.primaryDark),
+                            backgroundColor:
+                                const Color(0xFF1A3A6B).withAlpha(20),
+                            child: const Icon(Icons.description_outlined,
+                                color: Color(0xFF1A3A6B)),
                           ),
-                          title: Text(item.file.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          trailing: const Icon(Icons.download_rounded, color: AppColors.primaryDark),
-                          onTap: () => _openFile(context, category, item.file.name),
+                          title: Text(
+                            item.file.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            dateStr,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // AI Summary button
+                              IconButton(
+                                icon: const Icon(Icons.auto_awesome,
+                                    color: Color(0xFF1A3A6B), size: 20),
+                                tooltip: 'AI Summary',
+                                onPressed: () => _showSummaryModal(
+                                    context, ref, item.category, item.file.name),
+                              ),
+                              // Download button
+                              IconButton(
+                                icon: const Icon(Icons.download_rounded,
+                                    color: AppColors.textSecondary, size: 20),
+                                tooltip: 'Download',
+                                onPressed: () => _openFile(
+                                    context, category, item.file.name),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }),

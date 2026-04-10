@@ -12,6 +12,7 @@ import 'package:health_pilot/screens/vitals/sos_screen.dart';
 import 'package:health_pilot/screens/ai/ai_assistant_screen.dart';
 import 'package:health_pilot/screens/chat/patient_chat_screen.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
+import 'package:health_pilot/screens/chat/caregiver_screen.dart';
 
 /// Application router.
 ///
@@ -51,6 +52,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Signed in & verified — if still on an auth page, redirect to dashboard.
       if (isAuthRoute || currentPath == '/pending-verification') {
+        if (role == 'caregiver') {
+            return '/caregiver-view/00000000-0000-0000-0000-000000000000/Patient';
+        }
         return role == 'doctor' ? '/doctor-dashboard' : '/patient-dashboard';
       }
 
@@ -96,6 +100,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/patient-chat',
         builder: (context, state) => const PatientChatScreen(),
+      ),
+      GoRoute(
+        path: '/caregiver-view/:patientId/:patientName',
+        builder: (context, state) {
+          final patientId = state.pathParameters['patientId']!;
+          final patientName = state.pathParameters['patientName'] ?? 'Assigned Patient';
+          return CaregiverScreen(patientId: patientId, patientName: patientName);
+        },
       ),
     ],
   );

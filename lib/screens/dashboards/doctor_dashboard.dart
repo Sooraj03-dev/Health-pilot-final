@@ -138,7 +138,7 @@ class DoctorDashboard extends ConsumerWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -297,7 +297,7 @@ class DoctorDashboard extends ConsumerWidget {
 
   // ── Bottom Nav ────────────────────────────────────────────────────────────
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context) {
     return BottomNavigationBar(
       currentIndex: 0,
       selectedItemColor: AppColors.primaryDark,
@@ -305,6 +305,11 @@ class DoctorDashboard extends ConsumerWidget {
       backgroundColor: Colors.white,
       type: BottomNavigationBarType.fixed,
       elevation: 12,
+      onTap: (index) {
+        if (index == 3) {
+          context.push('/profile-doctor');
+        }
+      },
       items: const [
         BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined), label: 'Home'),

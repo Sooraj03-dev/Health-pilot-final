@@ -14,6 +14,9 @@ import 'package:health_pilot/screens/chat/patient_chat_screen.dart';
 import 'package:health_pilot/screens/chat/doctor_chat_screen.dart';
 import 'package:health_pilot/screens/records/records_screen.dart';
 import 'package:health_pilot/screens/records/records_viewer.dart';
+import 'package:health_pilot/screens/profile/setup_profile_screen.dart';
+import 'package:health_pilot/screens/profile/patient_profile_screen.dart';
+import 'package:health_pilot/screens/profile/doctor_profile_screen.dart';
 import 'package:health_pilot/widgets/app_shell.dart';
 import 'package:health_pilot/screens/chat/caregiver_screen.dart';
 
@@ -45,6 +48,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             : '/pending-verification';
       }
 
+<<<<<<< HEAD
+=======
+      // Check if essential profile info is missing — this must run BEFORE
+      // the dashboard redirect so new sign-ups land on /setup-profile first.
+      if (!authState.hasMinimalProfile && currentPath != '/setup-profile') {
+        return '/setup-profile';
+      }
+
+      // Signed in & profile complete — if still on an auth page, go to dashboard.
+>>>>>>> origin/profiles
       if (isAuthRoute || currentPath == '/pending-verification') {
         if (role == 'caregiver') {
           return '/caregiver-view/00000000-0000-0000-0000-000000000000/Patient';
@@ -74,7 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             PatientDashboard(),
             Center(child: Text('Vitals')),
             Center(child: Text('Reports')),
-            Center(child: Text('Profile')),
+            PatientProfileScreen(),
           ],
         ),
       ),
@@ -108,6 +121,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+<<<<<<< HEAD
         path: '/doctor-chat/:patientId/:patientName',
         builder: (context, state) {
           final patientId = state.pathParameters['patientId']!;
@@ -127,6 +141,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           return CaregiverScreen(
               patientId: patientId, patientName: patientName);
         },
+=======
+        path: '/setup-profile',
+        builder: (context, state) => const SetupProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile-patient',
+        builder: (context, state) => const PatientProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile-doctor',
+        builder: (context, state) => const DoctorProfileScreen(),
+>>>>>>> origin/profiles
       ),
     ],
   );

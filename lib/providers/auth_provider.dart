@@ -16,6 +16,7 @@ class AuthState {
   final String? userId;
   final String? fullName;
   final bool isLoading;
+  final bool hasMinimalProfile;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -24,6 +25,7 @@ class AuthState {
     this.userId,
     this.fullName,
     this.isLoading = true,
+    this.hasMinimalProfile = false,
   });
 
   AuthState copyWith({
@@ -33,6 +35,7 @@ class AuthState {
     String? userId,
     String? fullName,
     bool? isLoading,
+    bool? hasMinimalProfile,
   }) =>
       AuthState(
         isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -41,6 +44,7 @@ class AuthState {
         userId: userId ?? this.userId,
         fullName: fullName ?? this.fullName,
         isLoading: isLoading ?? this.isLoading,
+        hasMinimalProfile: hasMinimalProfile ?? this.hasMinimalProfile,
       );
 
   @override
@@ -93,6 +97,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       userId: user.id,
       fullName: profile?.fullName,
       isLoading: false,
+      hasMinimalProfile: profile?.hasMinimalProfile ?? false,
     );
     debugPrint('[AuthProvider] state updated → $state');
   }

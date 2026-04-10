@@ -43,7 +43,11 @@ dependencies:
   shimmer: ^3.0.0
   cached_network_image: ^3.3.0
   url_launcher: ^6.3.2
+<<<<<<< HEAD
   http: ^1.2.0
+=======
+  http: ^1.0.0
+>>>>>>> origin/profiles
 
 dev_dependencies:
   flutter_test:

@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:health_pilot/services/auth_service.dart';
 import 'package:health_pilot/screens/chat/doctor_inbox_screen.dart';
 import 'package:health_pilot/screens/chat/chat_room_screen.dart';
+import 'package:health_pilot/models/sos_alert.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ---------------------------------------------------------------------------
 // Data Models
@@ -101,6 +103,18 @@ final patientVitalsProvider =
 });
 
 // ---------------------------------------------------------------------------
+// SOS Alerts Provider — streams new sos_alerts rows in real-time
+// ---------------------------------------------------------------------------
+
+final sosAlertsProvider = StreamProvider<List<SosAlert>>((ref) {
+  return supabase
+      .from('sos_alerts')
+      .stream(primaryKey: ['id'])
+      .order('created_at', ascending: false)
+      .map((data) => data.map((e) => SosAlert.fromJson(e)).toList());
+});
+
+// ---------------------------------------------------------------------------
 // Doctor Dashboard
 // ---------------------------------------------------------------------------
 
@@ -113,10 +127,144 @@ class DoctorDashboard extends ConsumerStatefulWidget {
 
 class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
   int _currentIndex = 0;
+  String? _lastSeenSosId; // Track last seen alert to avoid duplicate dialogs
+
+  void _onSosAlerts(List<SosAlert> alerts) {
+    if (alerts.isEmpty) return;
+    final latest = alerts.first;
+    if (latest.id == null || latest.id == _lastSeenSosId) return;
+    // Only show if the alert is recent (within last 2 minutes)
+    final age = DateTime.now().toUtc().difference(latest.createdAt);
+    if (age.inMinutes > 2) return;
+
+    _lastSeenSosId = latest.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showSosDialog(latest);
+    });
+  }
+
+  void _showSosDialog(SosAlert alert) {
+    // Google Maps native deep link — opens app directly on Android
+    final nativeMapsUrl = 'geo:${alert.lat},${alert.lng}?q=${alert.lat},${alert.lng}(SOS+Patient+Location)';
+    final webMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${alert.lat},${alert.lng}';
+
+    Future<void> openMap() async {
+      // Try native Google Maps first
+      final nativeUri = Uri.parse(nativeMapsUrl);
+      if (await canLaunchUrl(nativeUri)) {
+        await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to Google Maps on the web
+        final webUri = Uri.parse(webMapsUrl);
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.emergency, color: Colors.red, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '🚨 SOS Alert!',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'A patient has triggered an emergency SOS alert.',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.location_on, color: Colors.red, size: 16),
+                      SizedBox(width: 4),
+                      Text('Patient Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Lat: ${alert.lat.toStringAsFixed(5)}',
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                  Text(
+                    'Lng: ${alert.lng.toStringAsFixed(5)}',
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Time: ${TimeOfDay.fromDateTime(alert.createdAt.toLocal()).format(context)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.map, size: 18),
+            label: const Text('View on Map'),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await openMap();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for realtime SOS alerts
+    ref.listen<AsyncValue<List<SosAlert>>>(sosAlertsProvider, (_, next) {
+      next.whenData(_onSosAlerts);
+    });
     final patientsAsync = ref.watch(assignedPatientsProvider);
+    // Watch SOS to keep subscription alive + get count for badge
+    final sosAsync = ref.watch(sosAlertsProvider);
+    final recentSosCount = sosAsync.valueOrNull?.where((a) {
+      return DateTime.now().toUtc().difference(a.createdAt).inMinutes <= 60;
+    }).length ?? 0;
+
     final doctorName = (supabase.auth.currentUser
             ?.userMetadata?['full_name'] as String?) ??
         'Doctor';
@@ -130,7 +278,7 @@ class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
           SafeArea(
             child: Column(
               children: [
-                _buildHeader(context, doctorName, patientsAsync),
+                _buildHeader(context, doctorName, patientsAsync, recentSosCount),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -159,7 +307,7 @@ class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
           const Center(child: Text('Profile Screen')),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -224,7 +372,7 @@ class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
   // ── Header ───────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, String doctorName,
-      AsyncValue<List<_PatientInfo>> patientsAsync) {
+      AsyncValue<List<_PatientInfo>> patientsAsync, int sosCount) {
     final count = patientsAsync.valueOrNull?.length ?? 0;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 8, 20),
@@ -302,10 +450,54 @@ class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
             ),
           ),
           // Action buttons
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: Colors.white, size: 22),
-            onPressed: () {},
+          // SOS notification bell with red badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                onPressed: () {
+                  // Show SOS panel when tapped
+                  final alerts = ref.read(sosAlertsProvider).valueOrNull ?? [];
+                  final recent = alerts.where((a) =>
+                    DateTime.now().toUtc().difference(a.createdAt).inMinutes <= 60
+                  ).toList();
+                  if (recent.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No recent SOS alerts'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  } else {
+                    _showSosDialog(recent.first);
+                  }
+                },
+              ),
+              if (sosCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        sosCount > 9 ? '9+' : '$sosCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white, size: 20),
@@ -318,10 +510,16 @@ class _DoctorDashboardState extends ConsumerState<DoctorDashboard> {
 
   // ── Bottom Nav ────────────────────────────────────────────────────────────
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context) {
     return BottomNavigationBar(
       currentIndex: _currentIndex,
-      onTap: (index) => setState(() => _currentIndex = index),
+      onTap: (index) {
+        if (index == 3) {
+          context.push('/profile-doctor');
+        } else {
+          setState(() => _currentIndex = index);
+        }
+      },
       selectedItemColor: AppColors.primaryDark,
       unselectedItemColor: AppColors.textSecondary,
       backgroundColor: Colors.white,

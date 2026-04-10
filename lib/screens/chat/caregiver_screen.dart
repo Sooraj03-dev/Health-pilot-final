@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:health_pilot/services/chat_service.dart';
 import 'package:health_pilot/providers/health_provider.dart';
-import 'package:health_pilot/providers/auth_provider.dart';
 import 'package:health_pilot/widgets/message_bubble.dart';
 import 'package:health_pilot/widgets/vitals_card.dart';
 import 'package:health_pilot/widgets/loading_shimmer.dart';
@@ -27,7 +25,6 @@ class CaregiverScreen extends ConsumerStatefulWidget {
 
 class _CaregiverScreenState extends ConsumerState<CaregiverScreen> 
     with TickerProviderStateMixin {
-  final ChatService _chatService = ChatService();
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _doctorScrollController = ScrollController();
   final ScrollController _caregiverScrollController = ScrollController();
@@ -99,7 +96,15 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
     
     _msgController.clear();
     try {
-      await _chatService.sendMessage(text, widget.patientId);
+      await supabase.from('messages').insert({
+        'sender_id': supabase.auth.currentUser!.id,
+        'receiver_id': widget.patientId,
+        'content': text,
+        // Let the default timestamp / created_at trigger in schema, 
+        // Or explicitly pass what the table expects:
+        // 'created_at': DateTime.now().toIso8601String(), 
+        // 'is_read': false,
+      });
       // Let the stream update then scroll
       Future.delayed(const Duration(milliseconds: 100), () => _scrollToBottom(_caregiverScrollController));
     } catch (e) {
@@ -108,6 +113,33 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
           SnackBar(content: Text('Failed to send message: $e'), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Stream<List<Message>> _getStreamForTab(String? otherId, bool isReadOnly) {
+    if (otherId == null) return const Stream.empty();
+    
+    if (isReadOnly) {
+      // Tab 1: Doctor <-> Patient
+      return supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: true) // Note: using created_at instead of timestamp to avoid Postgrest errors!
+        .map((data) => data.where((msg) =>
+          (msg['sender_id'] == otherId && msg['receiver_id'] == widget.patientId) ||
+          (msg['sender_id'] == widget.patientId && msg['receiver_id'] == otherId)
+        ).map((e) => Message.fromJson(e)).toList());
+    } else {
+      // Tab 2: Caregiver <-> Patient
+      final caregiverId = supabase.auth.currentUser!.id;
+      return supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: true) // Note: using created_at instead of timestamp
+        .map((data) => data.where((msg) =>
+          (msg['sender_id'] == caregiverId && msg['receiver_id'] == widget.patientId) ||
+          (msg['sender_id'] == widget.patientId && msg['receiver_id'] == caregiverId)
+        ).map((e) => Message.fromJson(e)).toList());
     }
   }
 
@@ -180,7 +212,7 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
                   
                   // Tab 2: Caregiver Chat (INTERACTIVE)
                   _buildChatTab(
-                    otherUserId: supabase.auth.currentUser?.id,
+                    otherUserId: widget.patientId, // The "other" is just the patient
                     isReadOnly: false,
                     emptyText: 'No messages yet. Start chatting with the patient.',
                     controller: _caregiverScrollController,
@@ -203,8 +235,8 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
     required String emptyText,
     required ScrollController controller,
   }) {
-    // Show shimmer if still resolving identity
-    if (otherUserId == null && _isLoadingDoctor) {
+    // Show shimmer if still resolving identity (in Read Only / Doctor tab)
+    if (otherUserId == null && _isLoadingDoctor && isReadOnly) {
       return const ChatShimmer();
     }
     
@@ -226,7 +258,7 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
       children: [
         Expanded(
           child: StreamBuilder<List<Message>>(
-            stream: _chatService.getConversationStream(otherUserId!, widget.patientId),
+            stream: _getStreamForTab(isReadOnly ? otherUserId : widget.patientId, isReadOnly),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const ChatShimmer(); 
@@ -276,7 +308,25 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen>
             },
           ),
         ),
-        if (!isReadOnly) _buildInputContainer(),
+        
+        if (isReadOnly)
+          Container(
+            padding: const EdgeInsets.all(8),
+            color: Colors.orange.withOpacity(0.1),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.visibility, size: 14, color: Colors.orange),
+                const SizedBox(width: 4),
+                const Text(
+                  'Read-only view',
+                  style: TextStyle(fontSize: 12, color: Colors.orange),
+                ),
+              ],
+            ),
+          )
+        else
+          _buildInputContainer(),
       ],
     );
   }

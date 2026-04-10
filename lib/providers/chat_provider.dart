@@ -1,15 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:health_pilot/core/supabase_client.dart';
 import 'package:health_pilot/models/message.dart';
 import 'package:health_pilot/services/chat_service.dart';
 
 // Provider that exposes the ChatService instance
 final chatServiceProvider = Provider<ChatService>((ref) {
-  return chatService; // Using the exported singleton from chat_service.dart
+  return ChatService(); // Using the singleton factory
 });
 
 // A family StreamProvider that takes the other user's ID as an argument
 // and returns the realtime stream of messages between the current user and them.
 final chatMessagesProvider = StreamProvider.family<List<Message>, String>((ref, otherUserId) {
   final service = ref.watch(chatServiceProvider);
-  return service.getMessages(otherUserId);
+  final currentUserId = supabase.auth.currentUser?.id ?? '';
+  if (currentUserId.isEmpty) return const Stream.empty();
+  return service.getConversationStream(currentUserId, otherUserId);
 });

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ─── Body-sensor permissions (heart rate & SpO2) ─────────────────────── -->
+    <!-- Required for direct sensor access on Wear OS devices                    -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <!-- Android 13+ background sensor access (only if reading while app is      -->
+    <!-- not in the foreground; remove if foreground-only reads suffice)         -->
+    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />
+
+    <!-- ─── Health Connect read permissions ─────────────────────────────────── -->
+    <!-- Declared here so the system Health Connect app shows them in its UI.    -->
+    <!-- Runtime grants are still requested via PermissionController launcher.   -->
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+
+    <!-- ─── Samsung Health Platform permission (sleep on Samsung devices) ───── -->
+    <uses-permission
+        android:name="com.samsung.android.wear.healthplatform.permission.READ_SLEEP" />
+
+    <!-- Required Wear OS hardware feature declaration -->
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Required by Health Connect: declare the permission rationale activity -->
+        <activity
+            android:name=".PermissionRationaleActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

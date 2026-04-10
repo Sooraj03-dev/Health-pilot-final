@@ -1,0 +1,3 @@
+// Root settings file – registers the watch app module.
+rootProject.name = "HealthPilotFinal"
+include ':watch'
